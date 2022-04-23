@@ -22,10 +22,7 @@ go run cmd/main --init
       "BackwardBlockNumber": 5
     },
         "DBConfig": {
-        "Debug": true,
-        "URL": "",
-        "Scheme": "",
-        "User": ""
+            "Debug": true,
     },
     "ChainListenConfig": {
         "ListenSlot": 5,
