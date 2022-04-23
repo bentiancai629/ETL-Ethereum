@@ -33,7 +33,6 @@ go run cmd/main --init
         "defer": 12,     //  考虑链上分叉的区块影响
         "From": 0,       //  区块开始同步   from 和 to必须同时定义!
         "To": 0,         //  同步结束的高度  0 < from + BatchSize < to
-        "Url": "wss://goerli.infura.io/ws/v3/ba851582c0314accaebcde9010e50e83"
     }
 }
 ```
