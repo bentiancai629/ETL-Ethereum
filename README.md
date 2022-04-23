@@ -32,6 +32,8 @@ go run cmd/main --init
         "To": 0,          //  同步结束的高度  0 < from + BatchSize < to
     }
 }
+
+# 默认为增量同步数据
 ```
 
 ## SET TOKEN LIST
