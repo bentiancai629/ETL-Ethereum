@@ -102,7 +102,7 @@ func (c *ChainListenCore) HandleNewBlock(height uint64, tokenList *conf.TokenAdd
 	}
 
 	for _, item := range tokenList.TokenList {
-		erc20Evt, err := c.getERC20EventByBlockNumber(item.Address, height, height, 2) // todo enum
+		erc20Evt, err := c.getERC20EventByBlockNumber(item.Name,item.Address, height, height, 2) // todo enum
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +117,6 @@ func (c *ChainListenCore) HandleNewBlock(height uint64, tokenList *conf.TokenAdd
 	return erc20Evts, nil
 }
 
-// contractCall 处理 lido的合约地址
 func (c *ChainListenCore) get721EventByBlockNumber(erc721Addr string, startHeight, endHeight uint64, eventType uint8) ([]*models.Erc20TransferEvent, error) {
 	nftAddr := common.HexToAddress(erc721Addr)
 	erc721Instance, err := erc721.NewErc721(nftAddr, c.rawClient)
@@ -147,7 +146,7 @@ func (c *ChainListenCore) get721EventByBlockNumber(erc721Addr string, startHeigh
 	return claimTransactions, nil
 }
 
-func (c *ChainListenCore) getERC20EventByBlockNumber(erc20Addr string, startHeight, endHeight uint64, eventType uint8) ([]*models.Erc20TransferEvent, error) {
+func (c *ChainListenCore) getERC20EventByBlockNumber(tokenName string, erc20Addr string, startHeight, endHeight uint64, eventType uint8) ([]*models.Erc20TransferEvent, error) {
 	erc20AddrHex := common.HexToAddress(erc20Addr)
 	erc20Instance, err := erc20.NewErc20(erc20AddrHex, c.rawClient)
 
@@ -181,7 +180,8 @@ func (c *ChainListenCore) getERC20EventByBlockNumber(erc20Addr string, startHeig
 		transferDao := &models.Erc20TransferEvent{
 			Height:    evt.Raw.BlockNumber,
 			Hash:      evt.Raw.TxHash.Hex(),
-			RawIndex:  uint8(evt.Raw.Index),
+			TokenName: tokenName,   // TODO
+ 			RawIndex:  uint8(evt.Raw.Index),
 			EventType: eventType,
 			ChainName: c.chainInfo.ChainName,
 			From:      evt.Src.String(),
