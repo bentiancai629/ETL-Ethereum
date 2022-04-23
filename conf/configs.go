@@ -28,13 +28,30 @@ func LoadConfig() (*Config, error) {
 		return nil, errors.Wrap(err, "failed on unmarshal config")
 	}
 
+	// tokenJson
+	tokenAddressFilePath := Env.ConfigFilePath
+	if strings.TrimSpace(tokenAddressFilePath) == "" {
+		tokenAddressFilePath = "conf/tokenAddress.json"
+	}
+	contentTokenList, err := ioutil.ReadFile(tokenAddressFilePath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed on read config file.")
+	}
+	err = json.Unmarshal(contentTokenList, &cfg.TokenAddressConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed on unmarshal config")
+	}
 	logs.Info("config :%v", cfg)
-	mysqlPassword := Env.MysqlPassword
-	if mysqlPassword != "" {
-		cfg.DBConfig.Password = mysqlPassword
+
+	if Env.MysqlUrl == "" || Env.MySqlScheme == "" || Env.MysqlUser == "" || Env.MysqlPassword == "" || Env.EthRpcUrl == "" {
+		return nil, errors.Wrap(err, "need to initialize environment")
 	}
 
-	//redisPassword := Env.RedisPassword
+	cfg.DBConfig.URL = Env.MysqlUrl
+	cfg.DBConfig.Scheme = Env.MySqlScheme
+	cfg.DBConfig.User = Env.MysqlUser
+	cfg.DBConfig.Password = Env.MysqlPassword
+	cfg.ChainListenConfig.Url = Env.EthRpcUrl
 
 	GlobalConfig = &cfg
 	return &cfg, nil

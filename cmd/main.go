@@ -56,8 +56,9 @@ func setupApp() *cli.App {
 
 func StartServer(ctx *cli.Context) {
 	init := ctx.GlobalBool("init")
+	//configFile := ctx.GlobalString("config")
+
 	if init {
-		//configFile := ctx.GlobalString("config")
 		config, err := conf.LoadConfig()
 		if config == nil || err != nil {
 			logs.Error("startServer - read config failed!")
@@ -80,7 +81,6 @@ func StartServer(ctx *cli.Context) {
 	}
 }
 
-
 func startServer(ctx *cli.Context) {
 	//configFile := ctx.GlobalString("config")
 	config, err := conf.LoadConfig()
@@ -92,7 +92,7 @@ func startServer(ctx *cli.Context) {
 
 	conf, _ := json.Marshal(config)
 	logs.Info("%s", string(conf))
-	listener.StartLandListen(config.DBConfig, config.ChainListenConfig)
+	listener.StartLandListen(config.DBConfig, config.ChainListenConfig,config.TokenAddressConfig)
 }
 
 func waitSignal() os.Signal {
@@ -117,7 +117,7 @@ func stopServer() {
 }
 
 func main() {
-	if err := setupApp().Run(os.Args); err != nil { // go  run main  init
+	if err := setupApp().Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

@@ -18,9 +18,9 @@ type Chain struct {
 type Erc20TransferEvent struct {
 	Id         int64     `gorm:"primaryKey;autoIncrement"`
 	ChainName  string    `json:"chainName" gorm:"column:chain_name; type:varchar(64);"`
-	Height     uint64    `gorm:"type:bigint(20);not null"`
-	Hash       string    `gorm:"type:varchar(66);unique_index;not null;"`
-	RawIndex   uint8     `gorm:"type:tinyint(6);unique_index;not null;"`
+	Height     uint64    `gorm:"type:bigint(20);index;not null"`
+	Hash       string    `gorm:"type:varchar(66);index;uniqueIndex:hash_rawIndex;not null;"`
+	RawIndex   uint8     `gorm:"type:tinyint(6); uniqueIndex:hash_rawIndex;not null;"`
 	EventType  uint8     `gorm:"type:tinyint(4);not null; comment:' 1-Approval  2-Transfer'"`
 	From       string    `gorm:"type:varchar(100);not null"`
 	To         string    `gorm:"type:varchar(100);not null"`

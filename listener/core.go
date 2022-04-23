@@ -4,7 +4,6 @@ import (
 	"ETL-Ethereum/conf"
 	"ETL-Ethereum/contracts/erc20"
 	"ETL-Ethereum/contracts/erc721"
-	"ETL-Ethereum/contracts/exchange"
 	"ETL-Ethereum/models"
 	"context"
 	"encoding/json"
@@ -24,14 +23,15 @@ import (
 )
 
 type ChainListenCore struct {
-	chainInfo models.ChainInfo
-	gethCfg   *conf.ChainListenConfig
-	rpcClient *rpc.Client
-	rawClient *ethclient.Client
-	mu        sync.Mutex
+	chainInfo    models.ChainInfo
+	gethCfg      *conf.ChainListenConfig
+	tokenListCfg *conf.TokenAddressConfig
+	rpcClient    *rpc.Client
+	rawClient    *ethclient.Client
+	mu           sync.Mutex
 }
 
-func NewChainListenCore(chainInfo models.ChainInfo, gethCfg *conf.ChainListenConfig) (*ChainListenCore, error) {
+func NewChainListenCore(chainInfo models.ChainInfo, gethCfg *conf.ChainListenConfig, tCfg *conf.TokenAddressConfig) (*ChainListenCore, error) {
 	rpcClient, err := rpc.Dial(chainInfo.InternalRpcURL)
 	if rpcClient == nil || err != nil {
 		return nil, fmt.Errorf("rpc client works error(%s)", err)
@@ -41,11 +41,12 @@ func NewChainListenCore(chainInfo models.ChainInfo, gethCfg *conf.ChainListenCon
 		return nil, fmt.Errorf("raw client works error(%s)", err)
 	}
 	return &ChainListenCore{
-		gethCfg:   gethCfg,
-		chainInfo: chainInfo,
-		rpcClient: rpcClient,
-		rawClient: rawClient,
-		mu:        sync.Mutex{},
+		gethCfg:      gethCfg,
+		chainInfo:    chainInfo,
+		rpcClient:    rpcClient,
+		rawClient:    rawClient,
+		tokenListCfg: tCfg,
+		mu:           sync.Mutex{},
 	}, nil
 }
 
@@ -61,6 +62,18 @@ func (c *ChainListenCore) GetDefer() uint64 {
 	return c.gethCfg.Defer
 }
 
+func (c *ChainListenCore) GetFromBlock() uint64 {
+	return c.gethCfg.From
+}
+
+func (c *ChainListenCore) GetToBlock() uint64 {
+	return c.gethCfg.To
+}
+
+func (c *ChainListenCore) GetTokenList() *conf.TokenAddressConfig {
+	return c.tokenListCfg
+}
+
 func (c *ChainListenCore) GetCurrentBlockHeight() (uint64, error) {
 	var result hexutil.Big
 	err := c.rpcClient.CallContext(context.Background(), &result, "eth_blockNumber")
@@ -70,12 +83,6 @@ func (c *ChainListenCore) GetCurrentBlockHeight() (uint64, error) {
 	return (*big.Int)(&result).Uint64(), err
 }
 
-func (c *ChainListenCore) GetLatHeaderByNumber(number uint64) (*PlatonHeader, error) {
-	var header *PlatonHeader
-	err := c.rpcClient.CallContext(context.Background(), &header, "eth_getBlockByNumber", hexutil.EncodeBig(big.NewInt(int64(number))), true)
-	return header, err
-}
-
 func (c *ChainListenCore) GetEthHeaderByNumber(number uint64) (*types.Header, error) {
 	header := &types.Header{}
 	err := c.rpcClient.CallContext(context.Background(), header, "eth_getBlockByNumber", hexutil.EncodeBig(big.NewInt(int64(number))), false)
@@ -83,7 +90,7 @@ func (c *ChainListenCore) GetEthHeaderByNumber(number uint64) (*types.Header, er
 }
 
 // core
-func (c *ChainListenCore) HandleNewBlock(height uint64) ([]*models.Erc20TransferEvent, error) {
+func (c *ChainListenCore) HandleNewBlock(height uint64, tokenList *conf.TokenAddressConfig) ([]*models.Erc20TransferEvent, error) {
 	var erc20Evts []*models.Erc20TransferEvent
 
 	header, err := c.GetEthHeaderByNumber(height)
@@ -94,45 +101,19 @@ func (c *ChainListenCore) HandleNewBlock(height uint64) ([]*models.Erc20Transfer
 		return nil, fmt.Errorf("there is no geth block")
 	}
 
-	//todo
-	height = 6761665
-
-	erc20Evt, err := c.getERC20EventByBlockNumber(c.gethCfg.WETHAddr, height,height, 2) // todo enum
-	if err != nil {
-		return nil, err
+	for _, item := range tokenList.TokenList {
+		erc20Evt, err := c.getERC20EventByBlockNumber(item.Address, height, height, 2) // todo enum
+		if err != nil {
+			return nil, err
+		}
+		erc20Evts = append(erc20Evts, erc20Evt...)
 	}
-	erc20Evts = append(erc20Evts, erc20Evt...)
 
 	for _, item := range erc20Evts {
 		logs.Info("(claim) from chain, txhash: %s", item.Hash)
 	}
 
-	return erc20Evts, nil
-}
-
-// core
-func (c *ChainListenCore) HandleNewBlockBk(height uint64) ([]*models.Erc20TransferEvent, error) {
-	var erc20Evts []*models.Erc20TransferEvent
-
-	header, err := c.GetEthHeaderByNumber(height)
-	if err != nil {
-		return nil, err
-	}
-
-	if header == nil {
-		return nil, fmt.Errorf("there is no geth block")
-	}
-
-	erc20Evt, err := c.getERC20EventByBlockNumber(c.gethCfg.WETHAddr, height, height, 1)
-	if err != nil {
-		return nil, err
-	}
-	erc20Evts = append(erc20Evts, erc20Evt...)
-
-	for _, item := range erc20Evts {
-		logs.Info("(claim) from chain, txhash: %s", item.Hash)
-	}
-
+	// all tokens' events
 	return erc20Evts, nil
 }
 
@@ -166,7 +147,6 @@ func (c *ChainListenCore) get721EventByBlockNumber(erc721Addr string, startHeigh
 	return claimTransactions, nil
 }
 
-// contractCall 处理 lido的合约地址
 func (c *ChainListenCore) getERC20EventByBlockNumber(erc20Addr string, startHeight, endHeight uint64, eventType uint8) ([]*models.Erc20TransferEvent, error) {
 	erc20AddrHex := common.HexToAddress(erc20Addr)
 	erc20Instance, err := erc20.NewErc20(erc20AddrHex, c.rawClient)
@@ -190,14 +170,8 @@ func (c *ChainListenCore) getERC20EventByBlockNumber(erc20Addr string, startHeig
 		if err != nil {
 			return nil, err
 		}
-		// 自定义
+		// todo
 		//transfer := getERC20Event(evt.Raw, eventType, c.chainInfo.ChainName, text)
-
-		fmt.Println("txHash ",evt.Raw.TxHash.Hex())
-
-		fmt.Println("transfer  from ", evt.Src)
-		fmt.Println("transfer  to ",evt.Dst)
-		fmt.Println("transfer  amount ",evt.Wad.Uint64())
 
 		//fAmount := new(big.Float)
 		//fAmount.SetString(evt.Wad.String())
@@ -207,12 +181,12 @@ func (c *ChainListenCore) getERC20EventByBlockNumber(erc20Addr string, startHeig
 		transferDao := &models.Erc20TransferEvent{
 			Height:    evt.Raw.BlockNumber,
 			Hash:      evt.Raw.TxHash.Hex(),
-			RawIndex: uint8(evt.Raw.Index),
+			RawIndex:  uint8(evt.Raw.Index),
 			EventType: eventType,
 			ChainName: c.chainInfo.ChainName,
-			From: evt.Src.String(),
-			To: evt.Dst.String(),
-			Amount: evt.Wad.Uint64(), // todo 需要处理decimal
+			From:      evt.Src.String(),
+			To:        evt.Dst.String(),
+			Amount:    evt.Wad.Uint64(), // todo 需要处理decimal
 			EventJson: text,
 			Status:    0,
 		}
@@ -256,48 +230,6 @@ func getERC20Event(raw types.Log, eventType uint8, chainName string, text []byte
 		Status:    0,
 	}
 }
-
-func (c *ChainListenCore) getExchangeEventByBlockNumber(erc721Addr string, startHeight, endHeight uint64) ([]*models.Erc20TransferEvent, error) {
-	nftAddr := common.HexToAddress(erc721Addr)
-	erc721Instance, err := exchange.NewExchange(nftAddr, c.rawClient)
-
-	if err != nil {
-		return nil, fmt.Errorf("GetSmartContractEventByBlock, error: %s", err.Error())
-	}
-	opt := getFilterOpts(startHeight, endHeight)
-	// get geth transfer events from given block
-	claimTransactions := make([]*models.Erc20TransferEvent, 0)
-	//fromFilter := []common.Address{common.HexToAddress("0x0000000000000000000000000000000000000000")}
-	matchedEvent, err := erc721Instance.FilterOrdersMatched(opt, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("GetSmartContractEventByBlock, filter transfer events :%s", err.Error())
-	}
-	for matchedEvent.Next() {
-		evt := matchedEvent.Event
-		text, err := json.Marshal(evt)
-		if err != nil {
-			return nil, err
-		}
-		claimTx := getNFtEvent(evt.Raw, 1, c.chainInfo.ChainName, text)
-		claimTransactions = append(claimTransactions, claimTx)
-	}
-
-	cancelledEvent, err := erc721Instance.FilterOrderCancelled(opt, nil)
-	if err != nil {
-		return nil, fmt.Errorf("GetSmartContractEventByBlock, filter transfer events :%s", err.Error())
-	}
-	for cancelledEvent.Next() {
-		evt := cancelledEvent.Event
-		text, err := json.Marshal(evt)
-		if err != nil {
-			return nil, err
-		}
-		claimTx := getNFtEvent(evt.Raw, 3, c.chainInfo.ChainName, text)
-		claimTransactions = append(claimTransactions, claimTx)
-	}
-	return claimTransactions, nil
-}
-
 
 // ToDecimal wei to decimals
 //func ToDecimal(ivalue interface{}, decimals int) decimal.Decimal {

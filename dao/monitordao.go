@@ -96,7 +96,7 @@ func (dao *DataBase) SaveEvents(erc20Evts []*models.Erc20TransferEvent) error {
 	return nil
 }
 
-func (dao *DataBase) SaveEventsIgnoredByHash(erc20Evts []*models.Erc20TransferEvent) error {
+func (dao *DataBase) SaveEventsIgnoredByHashIndex(erc20Evts []*models.Erc20TransferEvent) error {
 	if erc20Evts != nil && len(erc20Evts) > 0 {
 		for _, event := range erc20Evts {
 			res:= dao.db.Clauses(clause.Insert{Modifier: "IGNORE"}).Save(event)

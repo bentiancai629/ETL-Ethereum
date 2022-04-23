@@ -1,9 +1,10 @@
 package conf
 
 type Config struct {
-	ChainConfig       *ChainConfig
-	DBConfig          DBConfig
-	ChainListenConfig *ChainListenConfig
+	ChainConfig        *ChainConfig
+	DBConfig           DBConfig
+	ChainListenConfig  *ChainListenConfig
+	TokenAddressConfig *TokenAddressConfig
 }
 
 type ChainConfig struct {
@@ -19,9 +20,21 @@ type DBConfig struct {
 }
 
 type ChainListenConfig struct {
-	ListenSlot      uint64
-	BatchSize       uint64
-	Defer           uint64
-	Url             string
-	WETHAddr 		string
+	ListenSlot uint64
+	BatchSize  uint64
+	Defer      uint64
+	From       uint64
+	To         uint64
+	Url        string
+}
+
+type TokenAddressConfig struct {
+	TokenList []TokenInfo
+}
+
+type TokenInfo struct {
+	Name     string
+	Symbol   string
+	Address  string
+	Decimals uint8
 }
