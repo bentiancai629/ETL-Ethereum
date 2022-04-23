@@ -7,7 +7,7 @@
   },
   "ChainListenConfig": {
     "ListenSlot": 5,
-    "BatchSize": 1,
+    "BatchSize": 10,
     "defer": 12,
     "From": 0,
     "To": 0

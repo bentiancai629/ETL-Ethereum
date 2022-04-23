@@ -19,7 +19,7 @@ target
 *.swo
 *.swp
 *.zip
-*.vi
+*.vigit
 *~
 *.sass-cache
 *.tmp.html
