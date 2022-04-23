@@ -26,10 +26,10 @@ go run cmd/main --init
     },
     "ChainListenConfig": {
         "ListenSlot": 5,
-        "BatchSize": 1,  //  开启的协程
-        "defer": 12,     //  考虑链上分叉的区块影响
-        "From": 0,       //  区块开始同步   from 和 to必须同时定义!
-        "To": 0,         //  同步结束的高度  0 < from + BatchSize < to
+        "BatchSize": 10,  // 开启的协程数量
+        "defer": 12,      //  区块的确认数
+        "From": 0,        //  区块开始同步   from 和 to必须同时定义!
+        "To": 0,          //  同步结束的高度  0 < from + BatchSize < to
     }
 }
 ```
