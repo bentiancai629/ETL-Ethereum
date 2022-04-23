@@ -94,7 +94,6 @@ func (c *ChainListenCore) HandleNewBlock(height uint64) ([]*models.Erc20Transfer
 		return nil, fmt.Errorf("there is no geth block")
 	}
 
-
 	//todo
 	height = 6761665
 
