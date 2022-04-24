@@ -55,9 +55,8 @@ func setupApp() *cli.App {
 }
 
 func StartServer(ctx *cli.Context) {
-	init := ctx.GlobalBool("init")
 	//configFile := ctx.GlobalString("config")
-
+	init := ctx.GlobalBool("init")
 	if init {
 		config, err := conf.LoadConfig()
 		if config == nil || err != nil {
@@ -92,7 +91,7 @@ func startServer(ctx *cli.Context) {
 
 	conf, _ := json.Marshal(config)
 	logs.Info("%s", string(conf))
-	listener.StartLandListen(config.DBConfig, config.ChainListenConfig,config.TokenAddressConfig)
+	listener.StartLandListen(config.DBConfig, config.ChainListenConfig, config.TokenAddressConfig)
 }
 
 func waitSignal() os.Signal {

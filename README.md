@@ -1,6 +1,7 @@
 # ETL-Ethereum
 
 ## init .env
+
 ```
 export MYSQL_URL        =   
 export MYSQL_Scheme     =    
@@ -16,6 +17,7 @@ source .env
 go run cmd/main --init
 
 ## SET CONFIG
+
 ```
 {
     "ChainConfig": {
@@ -37,6 +39,7 @@ go run cmd/main --init
 ```
 
 ## SET TOKEN LIST
+
 ```
 {
     "tokenList": [
@@ -54,5 +57,15 @@ go run cmd/main --init
         }
     ]
 }
+```
+
+## SET INITIAL PARAMS
+
+```
+# example: t_chain
+INSERT INTO `t_chain` VALUES(1, 14600000, 5, "Ethereum", 1, '2022-04-24 17:00:01', '2022-04-24 17:00:01');
+
+# eample: t_chain_info
+INSERT INTO `t_chain_info` VALUES ('1', 'Ethereum', 'Goerli', '5', 'https://goerli.etherscan.io', 'https://goerli.infura.io/v3/', '0x7066608eF82ff3e7B24eFF45C871712F612345', '0x7066608eF82ff3e7B24eFF45C871712F612345', '0x7066608eF82ff3e7B24eFF45C871712F612345', '0x7066608eF82ff3e7B24eFF45C871712F612345', '2022-03-17 17:00:01', '2022-03-17 17:00:01', 'ETH', 'ws://127.0.0.1:8546', '0x7066608eF82ff3e7B24eFF45C871712F612345', '0x7066608eF82ff3e7B24eFF45C871712F612345', '0x7066608eF82ff3e7B24eFF45C871712F612345', '0.0100');
 ```
 

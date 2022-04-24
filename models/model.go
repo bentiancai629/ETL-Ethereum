@@ -2,34 +2,35 @@ package models
 
 import "time"
 
+/*
+	@dev  初始化参数: example
+	UPDATE t_chain SET  height=14600000, chain_name = "Ethereum", chain_id=1, backward_block_number=5 WHERE id = 1
+*/
 type Chain struct {
-	Id                  int64  `gorm:"primaryKey;autoIncrement"`
-	Height              uint64 `gorm:"type:bigint(20);not null"`
-	BackwardBlockNumber uint64 `gorm:"type:bigint(20);not null"`
-	ChainName           string `json:"chainName" gorm:"column:chain_name; type:varchar(64); index; comment:'Chain 名称，用于跟其他相关地方关联'"`
+	Id                  int64     `gorm:"primaryKey;autoIncrement"`
+	Height              uint64    `gorm:"type:bigint(20);not null"`
+	BackwardBlockNumber uint64    `gorm:"type:bigint(20);not null"`
+	ChainName           string    `json:"chainName" gorm:"column:chain_name;type:varchar(64);unique;comment:'Chain 名称，用于跟其他相关地方关联'"`
+	ChainId             uint8     `gorm:"type:tinyint(6); unique;not null;"`
+	CreateTime          time.Time `json:"createTime" gorm:"column:create_time; type:datetime; default:current_timestamp; comment:'创建时间'"`
+	UpdateTime          time.Time `json:"updateTime" gorm:"column:update_time; type:datetime; default:current_timestamp; comment:'更新时间'"`
 }
 
-/*
-	Raw.Address
-	Raw.Data
-	Raw.BlockNumber
-	Raw.TxHash
-*/
 type Erc20TransferEvent struct {
-	Id         int64     `gorm:"primaryKey;autoIncrement"`
-	ChainName  string    `json:"chainName" gorm:"column:chain_name; type:varchar(64);"`
-	Height     uint64    `gorm:"type:bigint(20);index;not null"`
-	TokenName  string    `gorm:"type:varchar(6);index;not null"`
-	Hash       string    `gorm:"type:varchar(66);index;uniqueIndex:hash_rawIndex;not null;"`
-	RawIndex   uint8     `gorm:"type:tinyint(6); uniqueIndex:hash_rawIndex;not null;"`
-	EventType  uint8     `gorm:"type:tinyint(4);not null; comment:' 1-Approval  2-Transfer'"`
-	From       string    `gorm:"type:varchar(100);not null"`
-	To         string    `gorm:"type:varchar(100);not null"`
-	Amount     uint64    `gorm:"type:bigint(20); not null; comment:'erc20转移数量'"` // todo  convert to decimal
-	EventJson  []byte    `gorm:"type:text;not null"`
-	Status     uint8     `gorm:"type:tinyint(4);not null;comment: '0-未处理, 1-已处理'"`
-	CreateTime time.Time `json:"createTime" gorm:"column:create_time; type:datetime; default:current_timestamp; comment:'创建时间'"`
-	UpdateTime time.Time `json:"updateTime" gorm:"column:update_time; type:datetime; default:current_timestamp; comment:'更新时间'"`
+	Id          int64     `gorm:"primaryKey;autoIncrement"`
+	ChainName   string    `json:"chainName" gorm:"column:chain_name; type:varchar(64);"`
+	Height      uint64    `gorm:"type:bigint(20);index;not null"`
+	TokenSymbol string    `gorm:"type:varchar(6);index;not null"`
+	Hash        string    `gorm:"type:varchar(66);index;uniqueIndex:hash_rawIndex;not null;"`
+	RawIndex    uint8     `gorm:"type:tinyint(6); uniqueIndex:hash_rawIndex;not null;"`
+	EventType   uint8     `gorm:"type:tinyint(4);not null; comment:' 1-Approval  2-Transfer'"`
+	From        string    `gorm:"type:varchar(100);not null"`
+	To          string    `gorm:"type:varchar(100);not null"`
+	Amount      uint64    `gorm:"type:bigint(20); not null; comment:'erc20转移数量'"` // todo  convert to decimal
+	EventJson   []byte    `gorm:"type:text;not null"`
+	Status      uint8     `gorm:"type:tinyint(4);not null;comment: '0-未处理, 1-已处理'"`
+	CreateTime  time.Time `json:"createTime" gorm:"column:create_time; type:datetime; default:current_timestamp; comment:'创建时间'"`
+	UpdateTime  time.Time `json:"updateTime" gorm:"column:update_time; type:datetime; default:current_timestamp; comment:'更新时间'"`
 }
 
 type ChainInfo struct {

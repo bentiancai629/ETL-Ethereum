@@ -102,7 +102,7 @@ func (c *ChainListenCore) HandleNewBlock(height uint64, tokenList *conf.TokenAdd
 	}
 
 	for _, item := range tokenList.TokenList {
-		erc20Evt, err := c.getERC20EventByBlockNumber(item.Name,item.Address, height, height, 2) // todo enum
+		erc20Evt, err := c.getERC20EventByBlockNumber(item.Symbol,item.Address, height, height, 2) // todo enum
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +146,7 @@ func (c *ChainListenCore) get721EventByBlockNumber(erc721Addr string, startHeigh
 	return claimTransactions, nil
 }
 
-func (c *ChainListenCore) getERC20EventByBlockNumber(tokenName string, erc20Addr string, startHeight, endHeight uint64, eventType uint8) ([]*models.Erc20TransferEvent, error) {
+func (c *ChainListenCore) getERC20EventByBlockNumber(tokenSymbol string, erc20Addr string, startHeight, endHeight uint64, eventType uint8) ([]*models.Erc20TransferEvent, error) {
 	erc20AddrHex := common.HexToAddress(erc20Addr)
 	erc20Instance, err := erc20.NewErc20(erc20AddrHex, c.rawClient)
 
@@ -178,17 +178,17 @@ func (c *ChainListenCore) getERC20EventByBlockNumber(tokenName string, erc20Addr
 		//fmt.Println("transfer  amountInEth ",ethValue)
 
 		transferDao := &models.Erc20TransferEvent{
-			Height:    evt.Raw.BlockNumber,
-			Hash:      evt.Raw.TxHash.Hex(),
-			TokenName: tokenName,   // TODO
- 			RawIndex:  uint8(evt.Raw.Index),
-			EventType: eventType,
-			ChainName: c.chainInfo.ChainName,
-			From:      evt.Src.String(),
-			To:        evt.Dst.String(),
-			Amount:    evt.Wad.Uint64(), // todo 需要处理decimal
-			EventJson: text,
-			Status:    0,
+			Height:      evt.Raw.BlockNumber,
+			Hash:        evt.Raw.TxHash.Hex(),
+			TokenSymbol: tokenSymbol, // TODO
+ 			RawIndex:    uint8(evt.Raw.Index),
+			EventType:   eventType,
+			ChainName:   c.chainInfo.ChainName,
+			From:        evt.Src.String(),
+			To:          evt.Dst.String(),
+			Amount:      evt.Wad.Uint64(), // todo 需要处理decimal
+			EventJson:   text,
+			Status:      0,
 		}
 
 		erc20Transactions = append(erc20Transactions, transferDao)
