@@ -31,7 +31,7 @@ func LoadConfig() (*Config, error) {
 	// tokenJson
 	tokenAddressFilePath := Env.ConfigFilePath
 	if strings.TrimSpace(tokenAddressFilePath) == "" {
-		tokenAddressFilePath = "conf/tokenAddress.json"
+		tokenAddressFilePath = "conf/tokenList.json"
 	}
 	contentTokenList, err := ioutil.ReadFile(tokenAddressFilePath)
 	if err != nil {
