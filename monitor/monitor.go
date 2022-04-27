@@ -1,13 +1,19 @@
 package monitor
 
 import (
+	"context"
 	"github.com/ethereum/go-ethereum/common"
+	_ "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	_ "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/sirupsen/logrus"
 	"math/big"
 	"sync"
 	"time"
 )
+
+var FieldTag = "monitor"
 
 type Options struct {
 	RpcUrl  string    // eth节点url
@@ -21,10 +27,30 @@ type monitor struct {
 	cancel  context.CancelFunc
 	cli     *ethclient.Client
 	hScan   HeightScanner
-	decoder *abiDecoder
+	decoder *AbiDecoder
 	handler TxHandler
 	logger  logrus.FieldLogger
 	sync.RWMutex
+}
+
+// HeightScanner 高度扫描器
+type HeightScanner interface {
+	// SaveHeight 持久化最新块高
+	SaveHeight(ctx context.Context, height *BlockHeight) error
+	// LoadLastHeight 加载上一次块高
+	LoadLastHeight(ctx context.Context) (*BlockHeight, error)
+}
+
+// TxHandler 业务tx句柄
+type TxHandler interface {
+	HeightScanner
+	// Do 处理命中的tx
+	Do(ctx context.Context, info *TxInfo)
+	// ContainContact 是否包含指定合约token
+	// NOTE: 如果不满足也放行会在decode中抛出error "illegal tx"
+	// 如果是多智能合约监听，可以使用map维护多个
+	// 配套的，需要把这些合约的abi合并在初始化monitor时赋值给AbiStr，注意去重
+	ContainContact(ctx context.Context, address ContractAddress) bool
 }
 
 func (m *monitor) Run() {
