@@ -118,14 +118,21 @@ func (m *monitor) Run() {
 				lastBlockHeight.Set(curIndex)
 				continue
 			}
-			start := big.NewInt(0).Set(lastBlockHeight)
-			end := big.NewInt(0).Set(curIndex)
+			// *******************并发处理********************************************//
+
+			// 从当前区块开始计数
+			start := big.NewInt(0).Set(lastBlockHeight) // 上一次块高
+			end := big.NewInt(0).Set(curIndex)          // 最新块
+			// todo  并发处理的点
 			m.blockListen(start, end)
+			// 并发处理
 			lastBlockHeight.Set(curIndex)
 			err = m.hScan.SaveHeight(m.ctx, curIndex)
 			if err != nil {
 				m.logger.WithField(FieldTag, "saveHeight").Error(err)
 			}
+
+			// ***************************************************************//
 		case <-m.ctx.Done():
 			m.logger.WithField(FieldTag, "close").Info()
 			return
