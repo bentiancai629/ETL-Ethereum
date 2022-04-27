@@ -4,6 +4,7 @@ import (
 	"ETL-Ethereum/handler"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	_ "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -118,13 +119,22 @@ func (m *monitor) Run() {
 				lastBlockHeight.Set(curIndex)
 				continue
 			}
-			// *******************并发处理********************************************//
 
 			// 从当前区块开始计数
 			start := big.NewInt(0).Set(lastBlockHeight) // 上一次块高
 			end := big.NewInt(0).Set(curIndex)          // 最新块
+
+			// *******************并发处理********************************************//
 			// todo  并发处理的点
-			m.blockListen(start, end)
+			if true {
+				//增量订阅 from to current
+				m.blockListenAdd(start)
+			} else {
+				//存量订阅 from tox
+				m.blockListenHistory(start, end)
+			}
+			// *******************并发处理********************************************//
+
 			// 并发处理
 			lastBlockHeight.Set(curIndex)
 			err = m.hScan.SaveHeight(m.ctx, curIndex)
@@ -160,7 +170,37 @@ func (m *monitor) getBlockHeight() (cur, highest *handler.BlockHeight, err error
 	}
 }
 
-func (m *monitor) blockListen(start, end *handler.BlockHeight) {
+// todo
+func (m *monitor) blockListenAdd(start *handler.BlockHeight) {
+	headers := make(chan *types.Header)
+	sub, err := m.cli.SubscribeNewHead(context.Background(), headers)
+	if err != nil {
+		m.logger.WithField(FieldTag, "blockByNumber").Errorf("height:%v error:%s", err)
+	}
+	for {
+		select {
+		case err := <-sub.Err():
+			m.logger.WithField(FieldTag, "blockByNumber").Errorf("height:%v error:%s", err)
+		case header := <-headers:
+			fmt.Println(header.Hash().Hex()) // 0xbc10defa8dda384c96a17640d84de5578804945d347072e091b4e5f390ddea7f
+
+			block, err := m.cli.BlockByHash(context.Background(), header.Hash())
+			if err != nil {
+				m.logger.WithField(FieldTag, "blockByNumber").Errorf("height:%v error:%s", err)
+			}
+
+			fmt.Println(block.Hash().Hex())        // 0xbc10defa8dda384c96a17640d84de5578804945d347072e091b4e5f390ddea7f
+			fmt.Println(block.Number().Uint64())   // 3477413
+			fmt.Println(block.Time())              // 1529525947
+			fmt.Println(block.Nonce())             // 130524141876765836
+			fmt.Println(len(block.Transactions())) // 7
+		}
+	}
+}
+
+func (m *monitor) blockListenHistory(start, end *handler.BlockHeight) {
+
+	// 改成subscribe
 	for i := big.NewInt(0).Set(start); i.Cmp(end) < 0; i.Add(i, big.NewInt(1)) {
 		var (
 			block *types.Block
