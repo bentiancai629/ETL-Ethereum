@@ -1,6 +1,7 @@
 package dao
 
 import (
+	models2 "ETL-Ethereum/tmp/models"
 	"fmt"
 	"github.com/beego/beego/v2/core/logs"
 	"gorm.io/driver/mysql"
@@ -9,7 +10,6 @@ import (
 	"gorm.io/gorm/logger"
 
 	"ETL-Ethereum/conf"
-	"ETL-Ethereum/models"
 )
 
 type DataBase struct {
@@ -38,8 +38,8 @@ func NewLandDao(dbCfg conf.DBConfig) *DataBase {
 }
 
 
-func (dao *DataBase) SaveChain(chain *models.Chain) error {
-	daoChain := new(models.Chain)
+func (dao *DataBase) SaveChain(chain *models2.Chain) error {
+	daoChain := new(models2.Chain)
 	res := dao.db.Where("chain_name = ?", chain.ChainName).First(daoChain)
 	if res.Error != nil {
 		if res.Error.Error() == "record not found" {
@@ -55,8 +55,8 @@ func (dao *DataBase) SaveChain(chain *models.Chain) error {
 	return nil
 }
 
-func (dao *DataBase) GetChain(chainName string) (*models.Chain, error) {
-	chain := new(models.Chain)
+func (dao *DataBase) GetChain(chainName string) (*models2.Chain, error) {
+	chain := new(models2.Chain)
 	res := dao.db.Where("chain_name = ?", chainName).First(chain)
 	if res.Error != nil {
 		return nil, res.Error
@@ -67,7 +67,7 @@ func (dao *DataBase) GetChain(chainName string) (*models.Chain, error) {
 	return chain, nil
 }
 
-func (dao *DataBase) UpdateChain(chain *models.Chain) error {
+func (dao *DataBase) UpdateChain(chain *models2.Chain) error {
 	if chain == nil {
 		return fmt.Errorf("no value!")
 	}
@@ -84,7 +84,7 @@ func (dao *DataBase) UpdateChain(chain *models.Chain) error {
 	return nil
 }
 
-func (dao *DataBase) SaveEvents(erc20Evts []*models.Erc20TransferEvent) error {
+func (dao *DataBase) SaveEvents(erc20Evts []*models2.Erc20TransferEvent) error {
 	if erc20Evts != nil && len(erc20Evts) > 0 {
 		for _, event := range erc20Evts {
 			res := dao.db.Save(event)
@@ -96,7 +96,7 @@ func (dao *DataBase) SaveEvents(erc20Evts []*models.Erc20TransferEvent) error {
 	return nil
 }
 
-func (dao *DataBase) SaveEventsIgnoredByHashIndex(erc20Evts []*models.Erc20TransferEvent) error {
+func (dao *DataBase) SaveEventsIgnoredByHashIndex(erc20Evts []*models2.Erc20TransferEvent) error {
 	if erc20Evts != nil && len(erc20Evts) > 0 {
 		for _, event := range erc20Evts {
 			res:= dao.db.Clauses(clause.Insert{Modifier: "IGNORE"}).Save(event)
@@ -111,8 +111,8 @@ func (dao *DataBase) SaveEventsIgnoredByHashIndex(erc20Evts []*models.Erc20Trans
 
 
 
-func (dao *DataBase) GetChainInfo() []models.ChainInfo {
-	var list []models.ChainInfo
-	dao.db.Model(models.ChainInfo{}).Order("id desc").Find(&list)
+func (dao *DataBase) GetChainInfo() []models2.ChainInfo {
+	var list []models2.ChainInfo
+	dao.db.Model(models2.ChainInfo{}).Order("id desc").Find(&list)
 	return list
 }

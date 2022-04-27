@@ -2,12 +2,12 @@ package tools
 
 import (
 	"ETL-Ethereum/dao"
+	models2 "ETL-Ethereum/tmp/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
 	"ETL-Ethereum/conf"
-	"ETL-Ethereum/models"
 )
 
 func Deploy(cfg *conf.Config) {
@@ -23,9 +23,9 @@ func Deploy(cfg *conf.Config) {
 		panic(err)
 	}
 	err = db.Debug().AutoMigrate(
-		&models.Chain{},
-		&models.Erc20TransferEvent{},
-		&models.ChainInfo{},
+		&models2.Chain{},
+		&models2.Erc20TransferEvent{},
+		&models2.ChainInfo{},
 	)
 	if err != nil {
 		panic(err)
@@ -36,7 +36,7 @@ func Deploy(cfg *conf.Config) {
 		panic("server is invalid")
 	}
 
-	chain := &models.Chain{BackwardBlockNumber: cfg.ChainConfig.BackwardBlockNumber}
+	chain := &models2.Chain{BackwardBlockNumber: cfg.ChainConfig.BackwardBlockNumber}
 
 	dao.SaveChain(chain)
 }
