@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -148,6 +149,53 @@ func (m *monitor) getBlockHeight() (cur, highest *BlockHeight, err error) {
 }
 
 func (m *monitor) blockListen(start, end *BlockHeight) {
+	// new subscriber
+	client, err := ethclient.Dial("wss://ropsten.infura.io/ws")
+	if err != nil {
+		log.Fatal(err)
+	}
+	headers := make(chan *types.Header)
+	sub, err := client.SubscribeNewHead(context.Background(), headers)
+	for {
+		select {
+		case err := <-sub.Err():
+			log.Fatal(err)
+		case header := <-headers:
+			fmt.Println(header.Hash().Hex()) // 0xbc10defa8dda384c96a17640d84de5578804945d347072e091b4e5f390ddea7f
+		}
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for i := big.NewInt(0).Set(start); i.Cmp(end) < 0; i.Add(i, big.NewInt(1)) {
+		go func(height *BlockHeight) {
+			var (
+				block *types.Block
+				err   error
+			)
+			for { // 失败阻塞，等待节点修复
+				block, err = m.cli.BlockByNumber(context.Background(), height)
+				if err != nil {
+					m.logger.WithField(FieldTag, "blockByNumber").Errorf("height:%v error:%s", height.String(), err)
+					time.Sleep(time.Second)
+					continue
+				}
+				break
+			}
+			if block.Transactions().Len() > 0 {
+				m.analyzeBlock(block)
+			}
+		}(i)
+	}
+
+}
+
+func blockHandler(height *BlockHeight) {
+
+}
+func (m *monitor) blockListenBK(start, end *BlockHeight) {
 	for i := big.NewInt(0).Set(start); i.Cmp(end) < 0; i.Add(i, big.NewInt(1)) {
 		var (
 			block *types.Block
