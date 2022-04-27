@@ -18,7 +18,6 @@ type Monitor interface {
 	Cancel()
 }
 
-
 // tx handler
 type TxHandler interface {
 	HeightScanner
@@ -36,9 +35,8 @@ type HeightScanner interface {
 
 var FieldTag = "monitor"
 
-
 type Handler struct {
-	txHandler TxHandler
+	txHandler     TxHandler
 	heightScanner HeightScanner
 }
 
@@ -82,12 +80,9 @@ func (block *Handler) SaveHeight(ctx context.Context, height *BlockHeight) error
 	return nil
 }
 
-
 func (block *Handler) LoadLastHeight(ctx context.Context) (*BlockHeight, error) {
 	return big.NewInt(1), nil
 }
-
-
 
 func (m *monitor) Run() {
 	lastBlockHeight, err := m.hScan.LoadLastHeight(m.ctx)
@@ -111,19 +106,19 @@ func (m *monitor) Run() {
 				continue
 			}
 
+			start := big.NewInt(0).Set(lastBlockHeight) // 上一次块高
+			end := big.NewInt(0).Set(curIndex)          // 最新块
 			// ---------------------------//
 			// 从当前区块开始计数
-			start := big.NewInt(0).Set(lastBlockHeight) // 上一次块高
-			end := big.NewInt(0).Set(curIndex) // 最新块
 			// todo  并发处理的点
 			m.blockListen(start, end)
-			// 并发处理
+			// ---------------------------//
+
 			lastBlockHeight.Set(curIndex)
 			err = m.hScan.SaveHeight(m.ctx, curIndex)
 			if err != nil {
 				m.logger.WithField(FieldTag, "saveHeight").Error(err)
 			}
-			// ---------------------------//
 
 		case <-m.ctx.Done():
 			m.logger.WithField(FieldTag, "close").Info()
@@ -232,7 +227,3 @@ func (m *monitor) analyzeTx(txHash common.Hash, msg *Message) (*TxInfo, error) {
 	}
 	return ti, nil
 }
-
-
-
-
