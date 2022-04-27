@@ -161,7 +161,7 @@ func (m *monitor) blockListen(start, end *BlockHeight) {
 		case err := <-sub.Err():
 			log.Fatal(err)
 		case header := <-headers:
-			fmt.Println(header.Hash().Hex()) // 0xbc10defa8dda384c96a17640d84de5578804945d347072e091b4e5f390ddea7f
+			fmt.Println(header.Hash().Hex())
 		}
 	}
 
@@ -170,47 +170,26 @@ func (m *monitor) blockListen(start, end *BlockHeight) {
 	}
 
 	for i := big.NewInt(0).Set(start); i.Cmp(end) < 0; i.Add(i, big.NewInt(1)) {
-		go func(height *BlockHeight) {
-			var (
-				block *types.Block
-				err   error
-			)
-			for { // 失败阻塞，等待节点修复
-				block, err = m.cli.BlockByNumber(context.Background(), height)
-				if err != nil {
-					m.logger.WithField(FieldTag, "blockByNumber").Errorf("height:%v error:%s", height.String(), err)
-					time.Sleep(time.Second)
-					continue
-				}
-				break
-			}
-			if block.Transactions().Len() > 0 {
-				m.analyzeBlock(block)
-			}
-		}(i)
+		go m.blockHandler(i)
 	}
-
 }
 
-func (m *monitor) blockListenBK(start, end *BlockHeight) {
-	for i := big.NewInt(0).Set(start); i.Cmp(end) < 0; i.Add(i, big.NewInt(1)) {
-		var (
-			block *types.Block
-			err   error
-		)
-		for { // 失败阻塞，等待节点修复
-			block, err = m.cli.BlockByNumber(context.Background(), i)
-			if err != nil {
-				m.logger.WithField(FieldTag, "blockByNumber").Errorf("height:%v error:%s", i.String(), err)
-				time.Sleep(time.Second)
-				continue
-			}
-			break
+func (m *monitor) blockHandler(height *BlockHeight) {
+	var (
+		block *types.Block
+		err   error
+	)
+	for { // 失败阻塞，等待节点修复
+		block, err = m.cli.BlockByNumber(context.Background(), height)
+		if err != nil {
+			m.logger.WithField(FieldTag, "blockByNumber").Errorf("height:%v error:%s", height.String(), err)
+			time.Sleep(time.Second)
+			continue
 		}
-		if block.Transactions().Len() > 0 {
-			m.analyzeBlock(block)
-		}
-
+		break
+	}
+	if block.Transactions().Len() > 0 {
+		m.analyzeBlock(block)
 	}
 }
 
