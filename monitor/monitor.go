@@ -1,7 +1,9 @@
 package monitor
 
 import (
+	"ETL-Ethereum/handler"
 	"context"
+	"errors"
 	"github.com/ethereum/go-ethereum/common"
 	_ "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -33,24 +35,66 @@ type monitor struct {
 	sync.RWMutex
 }
 
+type Monitor interface {
+	Run()
+	Cancel()
+}
+
 // HeightScanner 高度扫描器
 type HeightScanner interface {
 	// SaveHeight 持久化最新块高
-	SaveHeight(ctx context.Context, height *BlockHeight) error
+	SaveHeight(ctx context.Context, height *handler.BlockHeight) error
 	// LoadLastHeight 加载上一次块高
-	LoadLastHeight(ctx context.Context) (*BlockHeight, error)
+	LoadLastHeight(ctx context.Context) (*handler.BlockHeight, error)
 }
 
 // TxHandler 业务tx句柄
 type TxHandler interface {
 	HeightScanner
 	// Do 处理命中的tx
-	Do(ctx context.Context, info *TxInfo)
-	// ContainContact 是否包含指定合约token
-	// NOTE: 如果不满足也放行会在decode中抛出error "illegal tx"
-	// 如果是多智能合约监听，可以使用map维护多个
-	// 配套的，需要把这些合约的abi合并在初始化monitor时赋值给AbiStr，注意去重
-	ContainContact(ctx context.Context, address ContractAddress) bool
+	Do(ctx context.Context, info *handler.TxInfo)
+
+	ListenContracts(ctx context.Context, address handler.ContractAddress) bool
+}
+
+// New 初始化eth 监控器
+func New(opt *Options) (Monitor, error) {
+	if err := opt.check(); err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cli, err := ethclient.DialContext(ctx, opt.RpcUrl)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	m := &monitor{
+		ctx:     ctx,
+		cancel:  cancel,
+		cli:     cli,
+		decoder: newAbiDecoder(opt.AbiStr),
+		hScan:   opt.Handler,
+		handler: opt.Handler,
+		logger:  opt.Logger,
+	}
+	return m, nil
+}
+
+// 基本参数验证
+func (opt *Options) check() error {
+	if opt == nil {
+		return errors.New("options nil reference")
+	}
+	if opt.RpcUrl == "" || opt.AbiStr == "" {
+		return errors.New("rpcUrl and abiStr can't be empty")
+	}
+	if opt.Handler == nil {
+		return errors.New("handler nil reference")
+	}
+	if opt.Logger == nil {
+		opt.Logger = logrus.New()
+	}
+	return nil
 }
 
 func (m *monitor) Run() {
@@ -93,7 +137,7 @@ func (m *monitor) Cancel() {
 	m.cancel()
 }
 
-func (m *monitor) getBlockHeight() (cur, highest *BlockHeight, err error) {
+func (m *monitor) getBlockHeight() (cur, highest *handler.BlockHeight, err error) {
 	sync, err := m.cli.SyncProgress(m.ctx)
 	if err != nil {
 		return nil, nil, err
@@ -109,7 +153,7 @@ func (m *monitor) getBlockHeight() (cur, highest *BlockHeight, err error) {
 	}
 }
 
-func (m *monitor) blockListen(start, end *BlockHeight) {
+func (m *monitor) blockListen(start, end *handler.BlockHeight) {
 	for i := big.NewInt(0).Set(start); i.Cmp(end) < 0; i.Add(i, big.NewInt(1)) {
 		var (
 			block *types.Block
@@ -142,7 +186,7 @@ func (m *monitor) analyzeBlock(block *types.Block) {
 		if msg.To() == nil {
 			continue
 		}
-		if m.handler.ContainContact(m.ctx, msg.To().Hex()) {
+		if m.handler.ListenContracts(m.ctx, msg.To().Hex()) {
 			txInfo, err := m.analyzeTx(v.Hash(), &msg)
 			if err != nil {
 				m.logger.WithField(FieldTag, "analyzeTx").Error(err)
@@ -155,7 +199,7 @@ func (m *monitor) analyzeBlock(block *types.Block) {
 	}
 }
 
-func (m *monitor) analyzeTx(txHash common.Hash, msg *Message) (*TxInfo, error) {
+func (m *monitor) analyzeTx(txHash common.Hash, msg *handler.Message) (*handler.TxInfo, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			m.logger.WithField(FieldTag, "analyzeTx").Errorf("panic cover err:%v", err)
@@ -178,7 +222,7 @@ func (m *monitor) analyzeTx(txHash common.Hash, msg *Message) (*TxInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	ti := &TxInfo{
+	ti := &handler.TxInfo{
 		Message: msg,
 		Receipt: txRe,
 		Action:  act,

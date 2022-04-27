@@ -1,6 +1,7 @@
-package monitor
+package handler
 
 import (
+	"ETL-Ethereum/monitor"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
@@ -14,11 +15,11 @@ type Amount = big.Int
 type ContractAddress = string
 type Singer types.Signer
 type TxInfo struct {
-	Message *Message     // 消息体
-	Receipt *Receipt     // 回执
-	Action  *Action      // 合约方法及参数
-	TxHash  string       // 消息hash
-	Height  *BlockHeight // 块高
-	Fee     *Amount      // gas消耗
-	Status  bool         // tx是否有效
+	Message *Message        // 消息体
+	Receipt *Receipt        // 回执
+	Action  *monitor.Action // 合约方法及参数
+	TxHash  string          // 消息hash
+	Height  *BlockHeight    // 块高
+	Fee     *Amount         // gas消耗
+	Status  bool            // tx是否有效
 }
