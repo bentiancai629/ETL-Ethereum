@@ -192,9 +192,6 @@ func (m *monitor) blockListen(start, end *BlockHeight) {
 
 }
 
-func blockHandler(height *BlockHeight) {
-
-}
 func (m *monitor) blockListenBK(start, end *BlockHeight) {
 	for i := big.NewInt(0).Set(start); i.Cmp(end) < 0; i.Add(i, big.NewInt(1)) {
 		var (
