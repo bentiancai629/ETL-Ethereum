@@ -2,12 +2,12 @@ package main
 
 import (
 	"ETL-Ethereum/conf"
-	"ETL-Ethereum/monitor"
+	monitor2 "ETL-Ethereum/monitor"
 	"time"
 )
 
 func main() {
-	opt := &monitor.Options{
+	opt := &monitor2.Options{
 		Config: conf.Config{
 
 		},
@@ -15,7 +15,7 @@ func main() {
 	}
 
 	// monitor
-	monitor, err := monitor.New(opt)
+	monitor, err := monitor2.New(opt)
 	if err != nil {
 		panic(err)
 	}

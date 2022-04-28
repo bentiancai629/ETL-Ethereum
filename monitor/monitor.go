@@ -44,12 +44,6 @@ type Monitor interface {
 	Cancel()
 }
 
-// 流式处理
-type Transformer interface {
-	Run()
-}
-
-//
 type HeightScanner interface {
 	UpdateDBHeight(ctx context.Context, height *handler.BlockHeight) error
 	LoadLastHeight(ctx context.Context) (*handler.BlockHeight, error)
