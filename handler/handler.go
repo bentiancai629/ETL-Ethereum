@@ -17,7 +17,7 @@ type Monitor interface {
 
 // tx handler
 type TxHandler interface {
-	HeightScanner
+	//HeightScanner
 	Do(ctx context.Context, info *TxInfo)
 	ListenContract(ctx context.Context, address ContractAddress) bool
 }
@@ -25,7 +25,7 @@ type TxHandler interface {
 // block handler
 type HeightScanner interface {
 	// SaveHeight 持久化最新块高
-	SaveHeight(ctx context.Context, height *BlockHeight) error
+	UpdateDBHeight(ctx context.Context, height *BlockHeight) error
 	// LoadLastHeight 加载上一次块高
 	LoadLastHeight(ctx context.Context) (*BlockHeight, error)
 }
@@ -72,7 +72,7 @@ func (opt *Options) check() error {
 }
 
 // 记录高度到 DB
-func (block *Handler) SaveHeight(ctx context.Context, height *BlockHeight) error {
+func (block *Handler) UpdateDBHeight(ctx context.Context, height *BlockHeight) error {
 	log.Println(height.String())
 	return nil
 }

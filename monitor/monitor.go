@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"ETL-Ethereum/conf"
 	"ETL-Ethereum/handler"
 	"context"
 	"errors"
@@ -23,6 +24,7 @@ type Options struct {
 	AbiStr  string    // 组合abi,可以监控多个智能合约
 	Handler TxHandler // 业务处理handler
 	Logger  logrus.FieldLogger
+	Config  conf.Config // DB/TokenList/init
 }
 
 type monitor struct {
@@ -34,6 +36,7 @@ type monitor struct {
 	handler TxHandler
 	logger  logrus.FieldLogger
 	sync.RWMutex
+	config conf.Config
 }
 
 type Monitor interface {
@@ -41,24 +44,25 @@ type Monitor interface {
 	Cancel()
 }
 
-// HeightScanner 高度扫描器
+// 流式处理
+type Transformer interface {
+	Run()
+}
+
+//
 type HeightScanner interface {
-	// SaveHeight 持久化最新块高
-	SaveHeight(ctx context.Context, height *handler.BlockHeight) error
-	// LoadLastHeight 加载上一次块高
+	UpdateDBHeight(ctx context.Context, height *handler.BlockHeight) error
 	LoadLastHeight(ctx context.Context) (*handler.BlockHeight, error)
 }
 
-// TxHandler 业务tx句柄
 type TxHandler interface {
 	HeightScanner
 	// Do 处理命中的tx
 	Do(ctx context.Context, info *handler.TxInfo)
-
 	ListenContracts(ctx context.Context, address handler.ContractAddress) bool
 }
 
-// New 初始化eth 监控器
+// 实例化monitor
 func New(opt *Options) (Monitor, error) {
 	if err := opt.check(); err != nil {
 		return nil, err
@@ -124,20 +128,16 @@ func (m *monitor) Run() {
 			start := big.NewInt(0).Set(lastBlockHeight) // 上一次块高
 			end := big.NewInt(0).Set(curIndex)          // 最新块
 
-			// *******************并发处理********************************************//
-			// todo  并发处理的点
 			if true {
 				//增量订阅 from to current
-				m.blockListenAdd(start)
+				m.blockListenAdd()
 			} else {
 				//存量订阅 from tox
 				m.blockListenHistory(start, end)
 			}
-			// *******************并发处理********************************************//
 
-			// 并发处理
 			lastBlockHeight.Set(curIndex)
-			err = m.hScan.SaveHeight(m.ctx, curIndex)
+			err = m.hScan.UpdateDBHeight(m.ctx, curIndex)
 			if err != nil {
 				m.logger.WithField(FieldTag, "saveHeight").Error(err)
 			}
@@ -149,6 +149,7 @@ func (m *monitor) Run() {
 		}
 	}
 }
+
 
 func (m *monitor) Cancel() {
 	m.cancel()
@@ -170,8 +171,8 @@ func (m *monitor) getBlockHeight() (cur, highest *handler.BlockHeight, err error
 	}
 }
 
-// todo
-func (m *monitor) blockListenAdd(start *handler.BlockHeight) {
+// 增量同步
+func (m *monitor) blockListenAdd() {
 	headers := make(chan *types.Header)
 	sub, err := m.cli.SubscribeNewHead(context.Background(), headers)
 	if err != nil {
@@ -182,31 +183,26 @@ func (m *monitor) blockListenAdd(start *handler.BlockHeight) {
 		case err := <-sub.Err():
 			m.logger.WithField(FieldTag, "blockByNumber").Errorf("height:%v error:%s", err)
 		case header := <-headers:
-			fmt.Println(header.Hash().Hex()) // 0xbc10defa8dda384c96a17640d84de5578804945d347072e091b4e5f390ddea7f
+			fmt.Println(header.Hash().Hex())
 
 			block, err := m.cli.BlockByHash(context.Background(), header.Hash())
 			if err != nil {
 				m.logger.WithField(FieldTag, "blockByNumber").Errorf("height:%v error:%s", err)
 			}
-
-			fmt.Println(block.Hash().Hex())        // 0xbc10defa8dda384c96a17640d84de5578804945d347072e091b4e5f390ddea7f
-			fmt.Println(block.Number().Uint64())   // 3477413
-			fmt.Println(block.Time())              // 1529525947
-			fmt.Println(block.Nonce())             // 130524141876765836
-			fmt.Println(len(block.Transactions())) // 7
+			m.logger.WithField(FieldTag, "blockByNumber").Infof("height:%v with txs count  %v", block.Number().Uint64(), len(block.Transactions()))
 		}
 	}
 }
 
+// 历史同步
 func (m *monitor) blockListenHistory(start, end *handler.BlockHeight) {
 
-	// 改成subscribe
 	for i := big.NewInt(0).Set(start); i.Cmp(end) < 0; i.Add(i, big.NewInt(1)) {
 		var (
 			block *types.Block
 			err   error
 		)
-		for { // 失败阻塞，等待节点修复
+		for { // 失败阻塞，待节点修复
 			block, err = m.cli.BlockByNumber(context.Background(), i)
 			if err != nil {
 				m.logger.WithField(FieldTag, "blockByNumber").Errorf("height:%v error:%s", i.String(), err)
@@ -247,36 +243,6 @@ func (m *monitor) analyzeBlock(block *types.Block) {
 }
 
 func (m *monitor) analyzeTx(txHash common.Hash, msg *handler.Message) (*handler.TxInfo, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			m.logger.WithField(FieldTag, "analyzeTx").Errorf("panic cover err:%v", err)
-		}
-	}()
-	txInfo, isPending, err := m.cli.TransactionByHash(context.Background(), txHash)
-	if err != nil {
-		return nil, err
-	}
-	if isPending {
-		return nil, nil
-	}
-	txRe, errTxRe := m.cli.TransactionReceipt(context.Background(), txHash)
-	fee := big.NewInt(0)
-	if errTxRe == nil && txRe != nil {
-		fee = fee.SetUint64(txRe.GasUsed)
-		fee = fee.Mul(fee, txInfo.GasPrice())
-	}
-	act, err := m.decoder.DecodeTxData(msg.Data())
-	if err != nil {
-		return nil, err
-	}
-	ti := &handler.TxInfo{
-		Message: msg,
-		Receipt: txRe,
-		Action:  act,
-		TxHash:  txHash.Hex(),
-		Fee:     fee,
-		Height:  txRe.BlockNumber,
-		Status:  txRe.Status == 1,
-	}
-	return ti, nil
+
+	return nil, nil
 }
