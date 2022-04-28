@@ -6,9 +6,9 @@ import (
 )
 
 // 区块链处理
-type BlockEvent interface {
-}
+type BlockEvent interface {}
 
+// 区块信息
 type BlockInfo struct {
 	BlockNumber    int64
 	BlockTxCounter int64
@@ -20,59 +20,58 @@ type Transformer interface {
 }
 
 // 合约事件
-type ContractEventEvent struct {
-}
-
+type ContractEventEvent struct {}
 // 拿到event
 func (c *ContractEventEvent) GetEvent() (cc *ContractEventEvent) {
 	d := new(ContractEventEvent)
 	return d
 }
-
 // 合约-转账事件
-type ContractEventTransformer struct {
-}
-
+type ContractEventTransformer struct {}
 func (c *ContractEventTransformer) Transform(event ContractEventEvent) (cEvent *ContractEventEvent) {
 	tx := new(ContractEventEvent)
 	return tx
 }
 
+// TxTransformer
 type TxTransformer struct{}
 type TxEvent struct{}
-
 func (t *TxTransformer) Transform(event TxEvent) (txEvent *TxEvent) {
 	tx := new(TxEvent)
 	return tx
 }
 
+
+//  解析器句柄
 type Parser interface {
 	Parse(event ContractEventEvent)
 }
-
+// erc20解析器
 type ERC20Parser struct{}
-
+// erc721解析器
+type ERC721Parser struct{}
+//  erc20解析实现
 func (erc20 *ERC20Parser) Parse(event ContractEventEvent) {
 	//do save db
 }
-
-type ERC20TokenTransformer struct {
+func (erc721 *ERC721Parser) Parse(event ContractEventEvent) {
+	//do save db
 }
 
+
+// erc20/erc721的Transform接口实现
+type ERC20TokenTransformer struct {}
 func (erc20 *ERC20TokenTransformer) Transform(event ContractEventEvent) (p *Parser) {
 	//save database object
 	return nil
 }
-
-type ERC721TokenTransformer struct {
-}
-
+type ERC721TokenTransformer struct {}
 func (erc721 *ERC721TokenTransformer) Transform(event ContractEventEvent) (p *Parser) {
 	return nil
 }
 
-func emitEvent() {
-}
+// emit事件
+func emitEvent() {}
 
 const topic = "BlockEvent"
 
