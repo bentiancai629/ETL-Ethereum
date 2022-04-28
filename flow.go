@@ -1,9 +1,18 @@
-package monitor
+package main
 
-import _ "github.com/cskr/pubsub"
+import (
+	"fmt"
+	"github.com/cskr/pubsub"
+)
 
 // 区块链处理
-type BlockEvent interface{}
+type BlockEvent interface {
+}
+
+type BlockInfo struct {
+	BlockNumber    int64
+	BlockTxCounter int64
+}
 
 // tx转账
 type Transformer interface {
@@ -14,6 +23,7 @@ type Transformer interface {
 type ContractEventEvent struct {
 }
 
+// 拿到event
 func (c *ContractEventEvent) GetEvent() (cc *ContractEventEvent) {
 	d := new(ContractEventEvent)
 	return d
@@ -61,6 +71,39 @@ func (erc721 *ERC721TokenTransformer) Transform(event ContractEventEvent) (p *Pa
 	return nil
 }
 
-func main()  {
+func emitEvent() {
+}
 
+const topic = "BlockEvent"
+
+func main() {
+	// 0. 初始化pubsub
+	ps := pubsub.New(0)
+	ch := ps.Sub(topic)
+	// 1. sub BlockEvENT
+	blockEvt := &BlockInfo{100, 10}
+
+	// 2. sub BlockEvENT
+	go publishBlockEvt(ps, blockEvt)
+
+	for i := 1; ; i++ {
+		if i == 5 {
+			go ps.Unsub(ch, "topic")
+		}
+
+		if msg, ok := <-ch; ok {
+			fmt.Printf("Received %s, %d times.\n", msg, i)
+		} else {
+			break
+		}
+	}
+
+	defer ps.Close(topic)
+}
+
+func publishBlockEvt(ps *pubsub.PubSub, blockEvt *BlockInfo) {
+	for {
+		ps.Pub(blockEvt.BlockNumber, topic)
+		fmt.Println("blockEvt :", blockEvt.BlockNumber)
+	}
 }

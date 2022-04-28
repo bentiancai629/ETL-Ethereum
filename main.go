@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func main() {
+func main1() {
 	opt := &monitor2.Options{
 		Config: conf.Config{
 
