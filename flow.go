@@ -100,9 +100,20 @@ func main() {
 	defer ps.Close(topic)
 }
 
+
 func publishBlockEvt(ps *pubsub.PubSub, blockEvt *BlockInfo) {
 	for {
 		ps.Pub(blockEvt.BlockNumber, topic)
 		fmt.Println("blockEvt :", blockEvt.BlockNumber)
 	}
 }
+
+/** internal flow
+
+ Block Event -> TxEvent       ->  emit 到tx队列        ->  subscribe Tx  (ETH转账)
+				ContractEvent ->  emit contract队列    ->  subscribe ERC20
+													  ->  subscribe ERC721
+													  ->  subscribe ERCXXX
+ */
+
+
