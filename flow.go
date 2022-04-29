@@ -75,7 +75,7 @@ func emitEvent() {}
 
 const topic = "BlockEvent"
 
-func main() {
+func main01() {
 	// 0. 初始化pubsub
 	ps := pubsub.New(0)
 	ch := ps.Sub(topic)
@@ -116,4 +116,40 @@ func publishBlockEvt(ps *pubsub.PubSub, blockEvt *BlockInfo) {
 													  ->  subscribe ERCXXX
  */
 
+func main() {
+
+	var topic = "BLOCK EVENT"
+	// 0. 初始化pubsub
+	ps := pubsub.New(2)
+
+	// 1. BlockEvent 结构体
+	blockEvt01 := &BlockInfo{100, 10}
+	blockEvt02 := &BlockInfo{101, 11}
+
+	// 2. pub到 blockEvent队列
+	ps.Pub(blockEvt01,topic)
+	fmt.Println("publish block100 :", blockEvt01.BlockNumber)
+
+	ps.Pub(blockEvt02,topic)
+	fmt.Println("publish block101 :", blockEvt02.BlockNumber)
+
+
+	// 3.  sub订阅Block Event
+	ch := ps.Sub(topic)
+
+	for i := 1; i <3 ; i++ {
+		//if i == 3 {
+		//	go ps.Unsub(ch, "topic")
+		//}
+
+		if msg, ok := <-ch; ok {
+			fmt.Printf("Received %s, %d times.\n", msg, i)
+		} else {
+			break
+		}
+	}
+
+
+	defer ps.Close(topic)
+}
 
